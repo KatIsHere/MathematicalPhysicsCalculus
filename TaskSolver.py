@@ -110,8 +110,7 @@ class DifferentialTask:
                     (self.k(self.a)*self._alfa2 - self._alfa1*self._alfa2*self.a +  \
                     self._alfa1*self.k(self.b) + self._alfa1*self._alfa2*self.b)
             self._A_psi = (self._nue1 - self._alfa1*self._B_psi)/(-self.k(self.a) + self._alfa1*self.a)
-            self.f = lambda x: self._f(x) - self.q(x)*(self._A_psi*x + self._B_psi) -     \
-                    self._A_psi * self.p(x) - self.k1*self.k2*math.sin(self.k2*x)*self._A_psi
+            self.f = lambda x: self._f(x) - self.q(x)*(self._A_psi*x + self._B_psi) - self._A_psi * self.p(x) + self.k_der(x)*self._A_psi
             self.__substitute = True
         else:
             self.f = self._f
@@ -190,7 +189,7 @@ class DifferentialTask:
 def main():
     N = 30   # func number
     m_1 = 2; m_2 = 7; m_3 = 5
-    task = DifferentialTask(0, 1, k1=1, k2=3, k3=2, p1=2, p2=2, p3=3, q1=2,
+    task = DifferentialTask(0, 1, k1=1, k2=3, k3=2, p1=0, p2=0, p3=0, q1=2,
                             q2=3, q3=2, m1=m_1, m2=m_2, m3=m_3, alfa1=5, alfa2=5)
     # u = m_1 * sin⁡(m_2 * x)+ m_3
     task.set_solution(lambda x: m_1*math.sin(x * m_2) + m_3)
