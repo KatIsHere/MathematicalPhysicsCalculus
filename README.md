@@ -4,7 +4,7 @@ Some functions for solving tasks of mathematical physics
 The task looks like:
 
 
--(k(x)u'(x))' + p(x)u'(x) + q(x)u(x) = f(x), x in [a, b]
+         -(k(x)u'(x))' + p(x)u'(x) + q(x)u(x) = f(x), x in [a, b]
 
 where:   
 
@@ -13,5 +13,4 @@ where:
          k(b)u'(b) + alfa2*u(b) = nue2      nue1, nue2 - real numbers
       
       
-TaskSolve.py contains a class wich find an approximate solution of the task above
-         
+TaskSolve.py contains a class wich find an approximate solution of the task above with collocation method, least square method.
