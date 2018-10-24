@@ -26,7 +26,10 @@ class DifferentialTask:
         self._exact_solution = None
         self.set_coefs(k1, k2, k3, p1, p2, p3, 
             q1, q2, q3, m1, m2, m3, alfa1, alfa2)
-    
+
+    def clear_solution(self):
+        self.solution_ci = None
+
     def set_coefs(self, k1, k2, k3, p1, p2, p3, 
                     q1, q2, q3, m1, m2, m3, alfa1, alfa2):
         """Setting up parameters and functions"""
@@ -86,10 +89,8 @@ class DifferentialTask:
             res = 6*x - 2*self.__A - 4*self.a
         elif i == 1:
             res = 4*self.b + 2*self.__B - 6*x
-        else:
-            res = (i - 1)*(i - 2)*(x - self.a)**(i - 3)*(x - self.b)**2 + \
-                    (i - 1)*(x - self.a)**(i - 2)*2*(x - self.b) + \
-                    2*(i - 1)*(x - self.a)**(i - 2)*(x - self.b) +  2*(x - self.a)**(i - 1)
+        elif i >= 2:
+            res = 2*(self.b - x)**i - 4*i*(x -self.a)*(self.b - x)**(i - 1) + i*(i - 1)*(x - self.a)*(x - self.a) * (self.b - x)**(i - 2)
         return res
 
     def set_solution(self, u):
@@ -128,13 +129,14 @@ class DifferentialTask:
                  the approximate solution should be the nearrest"""
         assert len(cheb_dots) == self.n
         C = np.array([[1.0 for j in range(self.n)] for i in range(self.n)])
-        F = np.array([self.f(dot) for dot in cheb_dots])
+        #F = np.array([self.f(dot) for dot in cheb_dots])
+        F = []
         for j in range(self.n):
-            C[j][0] = self.__operator(cheb_dots[j], 0)
-            C[j][1] = self.__operator(cheb_dots[j], 1)
-            for i in range(2, self.n):
+            F.append(self.f(cheb_dots[j]))
+            for i in range(self.n):
                 C[j][i] = self.__operator(cheb_dots[j], i)
         self.solution_ci = np.linalg.solve(C, F)
+        x = 0
 
     # least squares solve method
     def least_square_solve(self):
@@ -143,9 +145,8 @@ class DifferentialTask:
         F = np.array([1.0 for j in range(self.n)])
         for j in range(self.n):
             for i in range(self.n):
-                C[j][i] = integrate.quad((lambda x: self.__operator(x, i)* \
-                                                           self.__operator(x, j)), self.a, self.b)[0]
-            F[j - 1] = integrate.quad((lambda x: self.f(x)*self.__operator(x, j)), self.a, self.b)[0]
+                C[j][i] = integrate.quad((lambda x: self.__operator(x, i)*self.__operator(x, j)), self.a, self.b)[0]
+            F[j] = integrate.quad((lambda x: self.f(x)*self.__operator(x, j)), self.a, self.b)[0]
         self.solution_ci = np.linalg.solve(C, F)
 
     def solution_difference(self):
@@ -192,16 +193,20 @@ def main():
 
     dots = 100
     val = np.linspace(0, 1, dots)
-    real_val = [task._exact_solution(x) for x in val]
+    real_val = []
+    for x in val:
+        real_val.append(task._exact_solution(x))
 
     task.collocation_solve(x_cheb)
-    approx_val_coll = [task.solution(x) for x in val]
+    approx_val_coll = []
+    for x in val:
+        approx_val_coll.append(task.solution(x))
 
     task.least_square_solve()
-    approx_val_least = [task.solution(x) for x in val]
-
+    approx_val_least = []
+    for x in val:
+        approx_val_least.append(task.solution(x))
     plt.figure(figsize=(12, 7))
-    t = str(task)
     plt.plot(val, real_val, 'r', label = "exact solution")
     plt.plot(val, approx_val_coll, 'g', label="collocation method")
     plt.plot(val, approx_val_least, 'y', label = "least square method")
