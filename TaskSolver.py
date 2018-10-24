@@ -27,9 +27,6 @@ class DifferentialTask:
         self.set_coefs(k1, k2, k3, p1, p2, p3, 
             q1, q2, q3, m1, m2, m3, alfa1, alfa2)
 
-    def clear_solution(self):
-        self.solution_ci = None
-
     def set_coefs(self, k1, k2, k3, p1, p2, p3, 
                     q1, q2, q3, m1, m2, m3, alfa1, alfa2):
         """Setting up parameters and functions"""
@@ -61,18 +58,22 @@ class DifferentialTask:
         self.__B = self.a - self.k(self.a)*dist/(2*self.k(self.a) + self._alfa1*dist)
 
     def base_phi(self, x, i):
-        """Base function phi_i(x)"""
+        """Base function phi_i(x)
+        INPUT: x - value, i - phi function number, i in range(self.n)
+        OUTPUT: value of phi_{i}(x)"""
         res = 0
         if i == 0:
             res = (x - self.a)**2 * (x - self.__A)
         elif i == 1:
             res = (self.b - x)**2 * (self.__B - x)
         else:
-            res = (x - self.a)**2 *  math.pow((self.b - x), i)
+            res = (x - self.a)**2 * math.pow((self.b - x), i)
         return res 
 
     def base_phi_der(self, x, i):
-        """Base functions' phi_i(x) first derivative -- for accurate calculations"""
+        """Base functions' phi_i(x) first derivative -- for accurate calculations
+        INPUT: x - value, i - phi function number, i in range(self.n)
+        OUTPUT: value of phi_{i}'(x)"""
         res = 0
         if i == 0:
             res = 2*(x - self.a)*(x - self.__A) + (x - self.a)**2
@@ -83,7 +84,9 @@ class DifferentialTask:
         return res 
 
     def base_phi_sec_der(self, x, i):
-        """Base functions' phi_i(x) second derivative -- for accurate calculations"""
+        """Base functions' phi_i(x) second derivative -- for accurate calculations
+        INPUT: x - value, i - phi function number, i in range(self.n)
+        OUTPUT: value of phi_{i}''(x)"""
         res = 0
         if i == 0:
             res = 6*x - 2*self.__A - 4*self.a
@@ -118,11 +121,12 @@ class DifferentialTask:
         """Operator A(phi_{i}) from the task
             * INPUT:    x_j - value
                         func_numb - number of the base function"""
+        phi = self.base_phi(x_j, func_numb)
         phi_diff = self.base_phi_der(x_j, func_numb) 
         k_diff = self.k_der(x_j)
         sec_phi_diff = self.base_phi_sec_der(x_j, func_numb)
-        return (-(k_diff * phi_diff + self.k(x_j) * sec_phi_diff) + \ 
-                        self.p(x_j)*phi_diff + self.q(x_j)*self.base_phi(x_j, func_numb))
+        return -(k_diff * phi_diff + self.k(x_j) * sec_phi_diff) + \
+                    self.p(x_j)*phi_diff + self.q(x_j)*phi
 
     # collocation solve method
     def collocation_solve(self, cheb_dots):
@@ -131,20 +135,20 @@ class DifferentialTask:
                  the approximate solution should be the nearrest"""
         assert len(cheb_dots) == self.n
         C = np.array([[1.0 for j in range(self.n)] for i in range(self.n)])
-        #F = np.array([self.f(dot) for dot in cheb_dots])
+        self.solution_ci = None
         F = []
         for j in range(self.n):
             F.append(self.f(cheb_dots[j]))
             for i in range(self.n):
                 C[j][i] = self.__operator(cheb_dots[j], i)
         self.solution_ci = np.linalg.solve(C, F)
-        x = 0
 
     # least squares solve method
     def least_square_solve(self):
         """Find approximate solution of the task with least square method"""
         C = np.array([[1.0 for j in range(self.n)] for i in range(self.n)])
         F = np.array([1.0 for j in range(self.n)])
+        self.solution_ci = None
         for j in range(self.n):
             for i in range(self.n):
                 C[j][i] = integrate.quad((lambda x: self.__operator(x, i)*self.__operator(x, j)), self.a, self.b)[0]
@@ -183,15 +187,14 @@ class DifferentialTask:
         return task
 
 
-
 def main():
-    N = 10   # func number
+    N = 30   # func number
     m_1 = 2; m_2 = 7; m_3 = 5
-    task = DifferentialTask(0, 1, k1=1, k2=3, k3=2, p1=2, p2=2, p3=3, q1=2, q2=3, q3=2, m1=m_1, m2=m_2, m3=m_3, alfa1=5, alfa2=5)
+    task = DifferentialTask(0, 1, k1=1, k2=3, k3=2, p1=2, p2=2, p3=3, q1=2,
+                            q2=3, q3=2, m1=m_1, m2=m_2, m3=m_3, alfa1=5, alfa2=5)
     # u = m_1 * sin⁡(m_2 * x)+ m_3
     task.set_solution(lambda x: m_1*math.sin(x * m_2) + m_3)
     task.init_base_func_number(N)
-    x_cheb = np.linspace(0, 1, N)
 
     dots = 100
     val = np.linspace(0, 1, dots)
@@ -199,6 +202,7 @@ def main():
     for x in val:
         real_val.append(task._exact_solution(x))
 
+    x_cheb = np.linspace(0, 1, N)
     task.collocation_solve(x_cheb)
     approx_val_coll = []
     for x in val:
@@ -209,9 +213,9 @@ def main():
     for x in val:
         approx_val_least.append(task.solution(x))
     plt.figure(figsize=(12, 7))
-    plt.plot(val, real_val, 'r', label = "exact solution")
+    plt.plot(val, real_val, 'r', label="exact solution")
     plt.plot(val, approx_val_coll, 'g', label="collocation method")
-    plt.plot(val, approx_val_least, 'y', label = "least square method")
+    plt.plot(val, approx_val_least, 'y', label="least square method")
     plt.legend()
     plt.show()
 
