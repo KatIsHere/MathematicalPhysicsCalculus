@@ -90,7 +90,8 @@ class DifferentialTask:
         elif i == 1:
             res = 4*self.b + 2*self.__B - 6*x
         elif i >= 2:
-            res = 2*(self.b - x)**i - 4*i*(x -self.a)*(self.b - x)**(i - 1) + i*(i - 1)*(x - self.a)*(x - self.a) * (self.b - x)**(i - 2)
+            res = 2*(self.b - x)**i - 4*i*(x -self.a)*(self.b - x)**(i - 1) + \
+                    i*(i - 1)*(x - self.a)*(x - self.a) * (self.b - x)**(i - 2)
         return res
 
     def set_solution(self, u):
@@ -120,7 +121,8 @@ class DifferentialTask:
         phi_diff = self.base_phi_der(x_j, func_numb) 
         k_diff = self.k_der(x_j)
         sec_phi_diff = self.base_phi_sec_der(x_j, func_numb)
-        return (-(k_diff * phi_diff + self.k(x_j) * sec_phi_diff) + self.p(x_j)*phi_diff + self.q(x_j)*self.base_phi(x_j, func_numb))
+        return (-(k_diff * phi_diff + self.k(x_j) * sec_phi_diff) + \ 
+                        self.p(x_j)*phi_diff + self.q(x_j)*self.base_phi(x_j, func_numb))
 
     # collocation solve method
     def collocation_solve(self, cheb_dots):
