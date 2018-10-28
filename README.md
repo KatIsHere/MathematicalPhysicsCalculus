@@ -1,6 +1,9 @@
 # MathematicalPhysicsCalculus
 Some functions for solving tasks of mathematical physics
 
+Builds an approximation of a solution to differential equation, 
+using implemented methods. Contains example of how to use the class and results of its' calculations
+
 The task looks like:
 
 
