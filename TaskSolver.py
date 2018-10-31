@@ -107,9 +107,6 @@ class Differential:
                     + i*(i - 1)*((x - self.a)**2) * ((self.b - x)**(i - 2))
         return res
 
-        """Set up exact solution of the task - if one is available"""
-        self._exact_solution = u
-
     def __substitute_nue(self):
         # psi = A_psi * x + B_psi
         # u(x) = v(x) + psi(x)
@@ -122,7 +119,6 @@ class Differential:
         
         self.f = lambda x: self._f(x) - self.q(x)*(self._A_psi*x + self._B_psi) - self._A_psi * self.p(x)   \
                             + self.k_der(x)*self._A_psi
-
 
     def __operator(self, x_j, func_numb):
         """Operator A(phi_{i}) from the task
