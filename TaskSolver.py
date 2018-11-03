@@ -21,7 +21,6 @@ class Differential:
                 q(x) = q1*cos(q2*x) + q3
         and exact solution is:
                 u(x) = m1*sin(m2*x) + m3
-
         parameters can be set up in the class constructor or set_coefs function
         IMPORTANT: a <= b, else they would be set to 0
     """
@@ -39,7 +38,8 @@ class Differential:
             self.a = a
             self.b = b
         else:
-            self.a = self.b = 0
+            self.a = b
+            self.b = a
 
     def set_coefs(self, k1, k2, k3, p1, p2, p3, 
                     q1, q2, q3, m1, m2, m3, alfa1, alfa2):
@@ -48,6 +48,7 @@ class Differential:
         self.k1, self.k2, self.k3 = k1, k2, k3
         self.p1, self.p2, self.p3 = p1, p2, p3
         self.q1, self.q2, self.q3 = q1, q2, q3
+        self.m1, self.m2, self.m3 = m1, m2, m3
         self._alfa1, self._alfa2 = alfa1, alfa2
         self.k = lambda x: k1*math.cos(k2*x) + k3  
         self.p = lambda x: p1*math.sin(p2*x) + p3
@@ -60,6 +61,9 @@ class Differential:
         self.__substitute_nue()
         
     def init_base_func_number(self, n):
+        """Number of base functions for the approximate solution.
+            INPUT: n - number of functions, should be at least 2, 
+                    else the assertion error will be thrown"""
         assert n >= 2    # there should be at least 2 base functions
         self.n = n
         dist = self.b - self.a
@@ -130,6 +134,23 @@ class Differential:
         sec_phi_diff = self.__base_d2phi(x_j, func_numb)
         return -(k_diff * phi_diff + self.k(x_j) * sec_phi_diff) + \
                     self.p(x_j)*phi_diff + self.q(x_j)*phi
+    
+    def __str__(self):
+        task = "-((" + str(self.k1) + "cos(" + str(self.k2) + "x) + " \
+                + str(self.k3) + ") u')' + (" + str(self.p1) + "sin(" + str(self.p2) + "x) + " \
+                + str(self.p3) + ") u' + (" + str(self.q1) + "cos(" + str(self.q2) + "x) + " \
+                + str(self.q3) + ") u = \n                " + str(self.k1 * self.k2* self.m1 * self.m2) \
+                + "cos("+str(self.m2) + "x) sin(" + str(self.k2) + "x) + " + \
+                str(self.m1 * self.m2 * self.m2) \
+                + "(" + str(self.k3) + " + " + str(self.k1) + "cos(" + \
+                str(self.k2) + "x))sin(" + str(self.m2)\
+                + "x) + (" + str(self.q3) + " + " + str(self.q1) + "cos(" + str(self.q2) + "x))" \
+                + "("  + str(self.m3) + " + " + str(self.m1) + "sin(" + str(self.m2) + "x))"    \
+                + str(self.m1*self.m2) + "cos(" + str(self.m2) + "x)(" + str(self.p3) + " + " + \
+                str(self.p1) + "sin(" + str(self.p2) + "x))"
+        return task
+
+    ################# SOLVE METHODS ##################
 
     # collocation solve method
     def collocation_solve(self, cheb_dots):
@@ -148,7 +169,9 @@ class Differential:
 
     # least squares solve method
     def least_square_solve(self):
-        """Find approximate solution of the task with least square method"""
+        """ Variation method
+            Finds approximate solution of the task 
+            with least square method"""
         C = np.array([[1.0 for j in range(self.n)] for i in range(self.n)])
         F = np.array([1.0 for j in range(self.n)])
         self.solution_ci = None
@@ -157,6 +180,32 @@ class Differential:
                 C[j][i] = integrate.quad((lambda x: self.__operator(x, i)*self.__operator(x, j)), self.a, self.b)[0]
             F[j] = integrate.quad((lambda x: self.f(x)*self.__operator(x, j)), self.a, self.b)[0]
         self.solution_ci = np.linalg.solve(C, F)
+
+    # square functionell approximation method
+    def square_approximation_solve(self, N):
+        """ Difference scheme method
+            Solves the task by approximating it with square 
+            polinome and minimizing it
+          * INPUT: N - difference scheme net size
+        """
+        h = (self.b - self.a)/N
+        C = [[0 for i in range(N)] for j in range(N)]
+        B = [1 for i in range(N)]
+        
+        for i in range(1, N - 2):
+            x_i = self.a + h*i
+            x_i1 = x_i + h
+            ai = self.k(x_i - 0.5)
+            ai1 = self.k(x_i1 - 0.5)
+            C[i] = self.q(x_i)*h*h - ai - self.p(x_i)
+            C[i + 1] = ai + self.p(x_i) + ai1 + self.p(x_i1)
+            C[i + 2] = - ai1 - self.p(x_i1)
+            B[i] = h*h*self.f(x_i)
+        
+            
+
+
+    ################ GET SOLUTION ####################
 
     def solution_difference(self):
         # (u, v) = int{a, b} u*v dx
@@ -171,23 +220,10 @@ class Differential:
             suma += self.solution_ci[i] * self.__base_phi(x, i)
         return suma
 
-    def __str__(self):
-        task = "-((" + str(self.k1) + "cos(" + str(self.k2) + "x) + " \
-                + str(self.k3) + ") u')' + (" + str(self.p1) + "sin(" + str(self.p2) + "x) + " \
-                + str(self.p3) + ") u' + (" + str(self.q1) + "cos(" + str(self.q2) + "x) + " \
-                + str(self.q3) + ") u = \n                " + str(self.k1 * self.k2* self.m1 * self.m2) \
-                + "cos("+str(self.m2) + "x) sin(" + str(self.k2) + "x) + " + \
-                str(self.m1 * self.m2 * self.m2) \
-                + "(" + str(self.k3) + " + " + str(self.k1) + "cos(" + \
-                str(self.k2) + "x))sin(" + str(self.m2)\
-                + "x) + (" + str(self.q3) + " + " + str(self.q1) + "cos(" + str(self.q2) + "x))" \
-                + "("  + str(self.m3) + " + " + str(self.m1) + "sin(" + str(self.m2) + "x))"    \
-                + str(self.m1*self.m2) + "cos(" + str(self.m2) + "x)(" + str(self.p3) + " + " + \
-                str(self.p1) + "sin(" + str(self.p2) + "x))"
-        return task
+
 
                  
-def solve_and_plot(N = 15, dots = 100):
+def solve_and_plot(N = 4, dots = 100):
     """Example for how to work with the class
     Other methods will be added"""
     task = Differential(0, 1, k1=1, k2=3, k3=2, p1=1, p2=4, p3=2, q1=2,
