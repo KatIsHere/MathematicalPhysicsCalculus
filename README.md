@@ -16,4 +16,4 @@ where:
          k(b)u'(b) + alfa2*u(b) = nue2      nue1, nue2 - real numbers
       
       
-TaskSolve.py contains a class wich find an approximate solution of the task above with collocation method, least square method.
+TaskSolve.py contains a class wich find an approximate solution of the task above with collocation method, least square method and integral approximation method.
