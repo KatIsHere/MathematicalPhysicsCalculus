@@ -58,7 +58,7 @@ class Differential:
         self._nue2 = self.k(self.b)*m1*m2*math.cos(self.b*m2) + alfa2*self._exact_solution(self.b)
         self._f = lambda x: -self.k(x)*(-m1*m2*m2*math.sin(m2*x)) - self.k_der(x)*m1*m2*math.cos(x*m2) \
                             + self.p(x)*m1*m2*math.cos(m2*x) + self.q(x)*self._exact_solution(x)
-        self.__substitute_nue()
+        #self.substitute_nue()
         
     def init_base_func_number(self, n):
         """Number of base functions for the approximate solution.
@@ -111,7 +111,7 @@ class Differential:
                     + i*(i - 1)*((x - self.a)**2) * ((self.b - x)**(i - 2))
         return res
 
-    def __substitute_nue(self):
+    def substitute_nue(self):
         # psi = A_psi * x + B_psi
         # u(x) = v(x) + psi(x)
         self._A_psi = 0
@@ -181,29 +181,39 @@ class Differential:
             F[j] = integrate.quad((lambda x: self.f(x)*self.__operator(x, j)), self.a, self.b)[0]
         self.solution_ci = np.linalg.solve(C, F)
 
-    # square functionell approximation method
-    def square_approximation_solve(self, N):
+    # integrall approximation method
+    def integral_approximation_solve(self, N = 10):
         """ Difference scheme method
-            Solves the task by approximating it with square 
-            polinome and minimizing it
+            Solves the task by multiplying it with differentiated 
+            function and taking integrall from it
+            Then integrall is approximated with a sum of the net
           * INPUT: N - difference scheme net size
         """
+        self.f = self._f
         h = (self.b - self.a)/N
         C = [[0 for i in range(N)] for j in range(N)]
         B = [1 for i in range(N)]
-        
-        for i in range(1, N - 2):
-            x_i = self.a + h*i
-            x_i1 = x_i + h
-            ai = self.k(x_i - 0.5)
-            ai1 = self.k(x_i1 - 0.5)
-            C[i] = self.q(x_i)*h*h - ai - self.p(x_i)
-            C[i + 1] = ai + self.p(x_i) + ai1 + self.p(x_i1)
-            C[i + 2] = - ai1 - self.p(x_i1)
-            B[i] = h*h*self.f(x_i)
-        
-            
 
+        C[0][0] = self.k(self.a + h*0.5)/h + self._alfa1 - self.p(self.a + h*0.5)*0.5
+        C[0][1] = -self.k(self.a + h*0.5)/h + self.p(self.a + h*(0.5))*0.5
+        B[0] = self._nue1
+        for i in range(1, N - 1):
+            C[i][i - 1] = -self.k(self.a + h*(i - 0.5))/h - self.p(self.a + h*(i - 1.5))*0.5
+            C[i][i] = self.k(self.a + (i - 0.5)*h)/h + self.k(self.a + (i + 0.5)*h)/h + \
+                    self.p(self.a + (i - 1.5)*h)*0.5 - self.p(self.a + (i - 0.5)*h)*0.5 + self.q(self.a + h*i)*h
+            C[i][i + 1] = -self.k(self.a + h*(i + 0.5))/h + self.p(self.a + h*(i - 0.5))*0.5
+            B[i] = h*self.f(self.a + h*i)
+        C[N - 1][N - 2] = -self.k(self.a + h*(N - 0.5))/h - self.p(self.a + h*(N - 0.5))*0.5
+        C[N - 1][N - 1] = self.k(self.a + h*(N - 0.5))/h + self._alfa2 + self.p(self.a + h*(N - 0.5))*0.5
+        B[N - 1] = self._nue2
+        
+        B = np.array(B)
+        C = np.array(C)
+        if(N < 10):
+            print(C)
+            print("\n\n", B)
+        Y = np.linalg.solve(C, B)
+        return Y
 
     ################ GET SOLUTION ####################
 
@@ -222,35 +232,58 @@ class Differential:
 
 
 
+# COLLOCATION METHOD IN USE
+def collocation(task, val, N, a = 0, b = 1):
+    task.substitute_nue()
+    x_cheb = np.linspace(0, 1, N)
+    task.collocation_solve(x_cheb)
+    approx_val_coll = []
+    for x in val:
+        approx_val_coll.append(task.solution(x))
+    return approx_val_coll
+
+# LEAST SQUARE METHOD IN USE
+def least_square(task, val, a = 0, b = 1):
+    task.substitute_nue()
+    task.least_square_solve()
+    approx_val_least = []
+    for x in val:
+        approx_val_least.append(task.solution(x))
+    return approx_val_least
+
+
+# INTEGRAL APPROXIMATION METHOD
+def integral(task, N, a = 0, b = 1):
+    Y = task.integral_approximation_solve(N)
+    val = np.linspace(0, 1, len(Y))
+    return Y, val
+
                  
 def solve_and_plot(N = 4, dots = 100):
     """Example for how to work with the class
     Other methods will be added"""
     task = Differential(0, 1, k1=1, k2=3, k3=2, p1=1, p2=4, p3=2, q1=2,
                             q2=3, q3=2, m1=2, m2=7, m3=5, alfa1=3, alfa2=5)
+    # PLOTTING
+    plt.figure(figsize=(12, 7))
+    plt.grid()
+
     task.init_base_func_number(N)
     # EXACT VALUES
     val = np.linspace(0, 1, dots)
     real_val = []
     for x in val:
         real_val.append(task._exact_solution(x))
-    # COLLOCATION METHOD
-    x_cheb = np.linspace(0, 1, N)
-    task.collocation_solve(x_cheb)
-    approx_val_coll = []
-    for x in val:
-        approx_val_coll.append(task.solution(x))
-    # LEAST SQUARE METHOD
-    task.least_square_solve()
-    approx_val_least = []
-    for x in val:
-        approx_val_least.append(task.solution(x))
-    # PLOTTING
-    plt.figure(figsize=(12, 7))
-    plt.grid()
     plt.plot(val, real_val, '-r', label=r'$\ u(x)$')
-    plt.plot(val, approx_val_coll, '--g', label="collocation method")
-    plt.plot(val, approx_val_least, '-.y', label="least square method")
+
+    Y, val = integral(task, 100)
+    plt.plot(val, Y, '-.y', label="y(x)")
+
+    #approx_val_coll = collocation(task, val, N)
+    #plt.plot(val, approx_val_coll, '--g', label="collocation method")
+    #approx_val_least = least_square(task, val)
+    #plt.plot(val, approx_val_least, '-.y', label="least square method")
+   
     plt.legend(fontsize=12)
     plt.xlabel('x')
     plt.ylabel('y')
