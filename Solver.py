@@ -117,6 +117,8 @@ class Differential:
         self._A_psi = 0
         self._B_psi = 0
         if self._nue1 != 0 or self._nue2 != 0:
+            self._nue1 = 0
+            self._nue2 = 0
             self._A_psi = (self._nue2 * self._alfa1 - self._nue1*self._alfa2)/(self.k(self.b) * self._alfa1 +   \
                                 self.k(self.a)*self._alfa2 + self._alfa1*self._alfa2*(self.b - self.a))
             self._B_psi = (self._nue1 + self._A_psi*(self.k(self.a) - self._alfa1*self.a))/self._alfa1
@@ -158,6 +160,7 @@ class Differential:
         * INPUT: cheb_dots - Chebishow from segment [a, b] in which 
                  the approximate solution should be the nearrest"""
         assert len(cheb_dots) == self.n
+        self.substitute_nue()
         C = np.array([[1.0 for j in range(self.n)] for i in range(self.n)])
         self.solution_ci = None
         F = []
@@ -172,6 +175,7 @@ class Differential:
         """ Variation method
             Finds approximate solution of the task 
             with least square method"""
+        self.substitute_nue()
         C = np.array([[1.0 for j in range(self.n)] for i in range(self.n)])
         F = np.array([1.0 for j in range(self.n)])
         self.solution_ci = None
@@ -188,34 +192,41 @@ class Differential:
             function and taking integrall from it
             Then integrall is approximated with a sum of the net
           * INPUT: N - difference scheme net size
+          * OUTPUT: an numpy array of approximated values of the net
         """
         self.f = self._f
         h = (self.b - self.a)/N
         C = [[0 for i in range(N)] for j in range(N)]
         B = [1 for i in range(N)]
-
-        C[0][0] = self.k(self.a + h*0.5)/h + self._alfa1 - self.p(self.a + h*0.5)*0.5
+        C[0][0] = self.k(self.a + h*0.5)/h + self._alfa1 - self.p(self.a + h*0.5)*0.5 + 0.5*h*self.q(self.a)
         C[0][1] = -self.k(self.a + h*0.5)/h + self.p(self.a + h*(0.5))*0.5
-        B[0] = self._nue1
+        B[0] = self._nue1 + 0.5*h*self.f(self.a)
         for i in range(1, N - 1):
             C[i][i - 1] = -self.k(self.a + h*(i - 0.5))/h - self.p(self.a + h*(i - 1.5))*0.5
             C[i][i] = self.k(self.a + (i - 0.5)*h)/h + self.k(self.a + (i + 0.5)*h)/h + \
                     self.p(self.a + (i - 1.5)*h)*0.5 - self.p(self.a + (i - 0.5)*h)*0.5 + self.q(self.a + h*i)*h
             C[i][i + 1] = -self.k(self.a + h*(i + 0.5))/h + self.p(self.a + h*(i - 0.5))*0.5
             B[i] = h*self.f(self.a + h*i)
-        C[N - 1][N - 2] = -self.k(self.a + h*(N - 0.5))/h - self.p(self.a + h*(N - 0.5))*0.5
-        C[N - 1][N - 1] = self.k(self.a + h*(N - 0.5))/h + self._alfa2 + self.p(self.a + h*(N - 0.5))*0.5
-        B[N - 1] = self._nue2
+        #C[N - 1][N - 2] = -self.k(self.a + h*(N - 0.5))/h - self.p(self.a + h*(N - 0.5))*0.5
+        #C[N - 1][N - 3] = -self.k(self.a + h*(N - 1.5))/h
+        #C[N - 1][N - 2] = self.k(self.a + h*(N - 1.5))/h - self.k(self.a + h*(N - 0.5))/h - self.p(self.a + h*(N - 0.5))*0.5
+        C[N - 1][N - 1] = self.k(self.a + h*(N - 0.5))/h + self._alfa2 + self.p(self.a + h*(N - 0.5))*0.5  + 0.5*h*self.q(self.b)
+        B[N - 1] = self._nue2 + 0.5*h*self.f(self.b)
         
         B = np.array(B)
-        C = np.array(C)
-        if(N < 10):
+        C = np.array(C) 
+        if(N < 10): # system for small N
             print(C)
             print("\n\n", B)
         Y = np.linalg.solve(C, B)
+        if(N < 40): # table of differenses
+            print("x \t\t y(x)\t\t u(x) \t\t u(x) - y(x)")
+            for i in range(N):
+                u = self._exact_solution(self.a + i*h)
+                print(self.a + i*h, "\t", Y[i], "\t", u, "\t", u - Y[i])
         return Y
 
-    ################ GET SOLUTION ####################
+    ################ GET SOLUTION FOR VARIATIONAL AND ITERATIVE METHODS ####################
 
     def solution_difference(self):
         # (u, v) = int{a, b} u*v dx
@@ -276,8 +287,8 @@ def solve_and_plot(N = 4, dots = 100):
         real_val.append(task._exact_solution(x))
     plt.plot(val, real_val, '-r', label=r'$\ u(x)$')
 
-    Y, val = integral(task, 100)
-    plt.plot(val, Y, '-.y', label="y(x)")
+    Y, val = integral(task, 20)
+    plt.plot(val, Y, '-.g', label="y(x)")
 
     #approx_val_coll = collocation(task, val, N)
     #plt.plot(val, approx_val_coll, '--g', label="collocation method")
